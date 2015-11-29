@@ -74,6 +74,7 @@ func (ts *testSystem) startServer(numTries int) error {
 			return errors.New("server returned by New() must not be nil")
 		}
 		port := 2000 + randGen.Intn(10000)
+		fmt.Printf("port %d after New Server()\n",port)
 		if err := ts.server.Start(port); err == nil {
 			ts.hostport = net.JoinHostPort("localhost", strconv.Itoa(port))
 			return nil
@@ -92,6 +93,7 @@ func (ts *testSystem) startServer(numTries int) error {
 // non-nil error if one or more of the clients failed to establish a connection.
 func (ts *testSystem) startClients(clients ...*testClient) error {
 	for _, cli := range clients {
+		fmt.Println("start client ",cli.id, cli.slow)
 		if addr, err := net.ResolveTCPAddr("tcp", ts.hostport); err != nil {
 			return err
 		} else if conn, err := net.DialTCP("tcp", nil, addr); err != nil {
@@ -116,6 +118,7 @@ func (ts *testSystem) killClients(clients ...*testClient) {
 // startReading signals the specified clients to begin reading from the network. Messages
 // read over the network are sent back to the test runner through the readChan channel.
 func (ts *testSystem) startReading(readChan chan<- *networkEvent, clients ...*testClient) {
+	fmt.Println("reading ")
 	for _, cli := range clients {
 		// Create new instance of cli for the goroutine
 		// (see http://golang.org/doc/effective_go.html#channels).
@@ -294,13 +297,14 @@ func testBasic(t *testing.T, name string, numClients, numMessages, timeout int) 
 		return
 	}
 	defer ts.server.Close()
-
+	fmt.Println("checking count")
 	if err := ts.checkCount(0); err != nil {
 		t.Error(err)
 		return
 	}
 
 	allClients := newTestClients(numClients, false)
+	fmt.Println("starting clients")
 	if err := ts.startClients(allClients...); err != nil {
 		t.Errorf("Failed to start clients: %s\n", err)
 		return
@@ -309,7 +313,7 @@ func testBasic(t *testing.T, name string, numClients, numMessages, timeout int) 
 
 	// Give the server some time to register the clients before running the test.
 	time.Sleep(time.Duration(defaultStartDelay) * time.Millisecond)
-
+	fmt.Printf("count should be %d\n", numClients)
 	if err := ts.checkCount(numClients); err != nil {
 		t.Error(err)
 		return
